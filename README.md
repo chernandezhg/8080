@@ -1,6 +1,8 @@
-# Intel 8080 CPU Emulator & Assembler - Version 2.1.0
+# Intel 8080 CPU Emulator, Assembler & Floating-Point Coprocessor - Version 3.0.0
 
 Bienvenidos al emulador y ensamblador de la arquitectura Intel 8080. Este proyecto ha sido construido desde cero utilizando tecnología 100% web pura (HTML5, CSS3 y Vanilla JavaScript) sin frameworks ni dependencias de ningún tipo, garantizando una carga instantánea y la máxima compatibilidad educativa.
+
+Esta version integra un **coprocesador conceptual de punto flotante de 32 bits**. La CPU se comunica con la FPU mediante las instrucciones reales `IN` y `OUT` del Intel 8080; los operandos y resultados se representan en formato IEEE 754 de precision simple.
 
 ---
 
@@ -31,6 +33,28 @@ Esta versión representa un gran salto adelante en la calidad del entorno de des
 - **Botón Clear Code:** Permite vaciar el editor del ensamblador y sus salidas con un solo clic.
 - **Reset Profundo:** Al reiniciar el CPU, se limpia la memoria por completo (rellenando con ceros), se resetean todos los registros, banderas y el visor de memoria se restablece a la dirección inicial `0000`.
 
+## 🧮 Coprocesador de punto flotante (Version 3.0)
+
+- Registros virtuales `F0`, `F1` y `RESULT` de 32 bits.
+- Operaciones de suma, resta, multiplicacion y division.
+- Redondeo real a precision simple mediante `Math.fround` y `DataView`.
+- Indicadores `READY`, `DIV/0`, `OVERFLOW`, `UNDERFLOW` e `INVALID`.
+- Comunicacion con el 8080 byte a byte mediante puertos de entrada/salida.
+- Panel visual con valores decimales, representacion hexadecimal y actividad del bus.
+- Banco de pruebas manual y demostracion ensamblador incorporada.
+
+### Mapa de puertos
+
+| Direccion | Sentido | Funcion |
+|---|---|---|
+| `10H`–`13H` | `OUT` | Cuatro bytes little-endian del operando `F0` |
+| `14H`–`17H` | `OUT` | Cuatro bytes little-endian del operando `F1` |
+| `18H` | `OUT` | Comando: `01H` suma, `02H` resta, `03H` multiplicacion, `04H` division |
+| `20H`–`23H` | `IN` | Cuatro bytes little-endian del resultado |
+| `24H` | `IN` | Registro de estado |
+
+Para probar la integracion, pulsa **Cargar demostracion IN/OUT**, luego **Run**. El programa envia `1.5` y `2.25`, ejecuta la suma y guarda `3.75` (`40700000H`) en las direcciones `2000H`–`2003H`; el estado queda en `2004H`.
+
 ---
 
 ## 📦 Características Principales
@@ -56,19 +80,30 @@ Esta versión representa un gran salto adelante en la calidad del entorno de des
 Para utilizar el emulador de forma local en tu máquina o para desarrollo:
 
 1. **Clonar o descargar** este repositorio.
-2. Servir el proyecto localmente mediante cualquier servidor web estático. Por ejemplo, si tienes Python instalado, ejecuta en la terminal de la raíz:
+2. Abre `index.html` directamente o sirve el proyecto mediante cualquier servidor web estatico. Por ejemplo, si tienes Python instalado, ejecuta en la terminal de la raiz:
    ```bash
    python3 -m http.server 8000
    ```
 3. Abre tu navegador e ingresa a `http://localhost:8000`.
 4. ¡Comienza a escribir código ensamblador, presiona **Assemble & Load**, y ejecuta tu programa con **Run** o **Step**!
 
+### Pruebas automatizadas
+
+Con Node.js instalado:
+
+```bash
+node test.js
+```
+
+Las pruebas cubren el emulador original, aritmetica Float32, division entre cero y una comunicacion completa CPU–FPU mediante `IN/OUT`.
+
 ---
 
 ## 📝 Documentación Recomendada
 
 *   **`INSTRUCTIONS.md`:** Nuestro libro didáctico interactivo diseñado específicamente para que los estudiantes de alto nivel aprendan el funcionamiento práctico del ensamblador paso a paso, con guías estructuradas de aritmética, ciclos, condicionales y la pila.
+*   **`DOCUMENTACION_FPU.md`:** Diseño del coprocesador, protocolo y casos de prueba.
 
 ---
-**Versión del Proyecto:** 2.1.0
+**Versión del Proyecto:** 3.0.0
 **Licencia:** MIT
