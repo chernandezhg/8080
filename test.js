@@ -1,6 +1,7 @@
 // test.js - Unit tests for Intel 8080 CPU and Assembler
 const Intel8080 = require('./cpu.js');
 const Assembler8080 = require('./assembler.js');
+const FloatingPointCoprocessor = require('./fpu.js');
 const assert = require('assert');
 
 console.log('--- Running Intel 8080 Emulator & Assembler Tests ---');
@@ -150,6 +151,64 @@ runTest('Assembler Rejects Invalid Code & Registers', () => {
     assert.throws(() => {
         assembler.assemble('JMP UNDEFINED_LABEL');
     }, /Undefined label/i);
+});
+
+runTest('FPU performs IEEE 754 Float32 arithmetic', () => {
+    const fpu = new FloatingPointCoprocessor();
+    fpu.setOperands(1.5, 2.25);
+    const result = fpu.execute(FloatingPointCoprocessor.COMMANDS.ADD);
+
+    assert.strictEqual(result, 3.75);
+    assert.strictEqual(fpu.result, 3.75);
+    assert.strictEqual(fpu.bytesToHex(fpu.resultBytes), '40700000');
+    assert.deepStrictEqual(fpu.getStatusLabels(), ['READY']);
+});
+
+runTest('FPU reports division by zero', () => {
+    const fpu = new FloatingPointCoprocessor();
+    fpu.setOperands(8, 0);
+    fpu.execute(FloatingPointCoprocessor.COMMANDS.DIVIDE);
+
+    assert.strictEqual(fpu.result, Infinity);
+    assert.ok(fpu.status & FloatingPointCoprocessor.STATUS.DIVIDE_BY_ZERO);
+});
+
+runTest('8080 communicates with the FPU through IN/OUT ports', () => {
+    const fpu = new FloatingPointCoprocessor();
+    const cpu = new Intel8080(fpu);
+    const assembler = new Assembler8080();
+    const source = `
+        MVI A, 00H
+        OUT 10H
+        OUT 11H
+        MVI A, C0H
+        OUT 12H
+        MVI A, 3FH
+        OUT 13H
+
+        MVI A, 00H
+        OUT 14H
+        OUT 15H
+        MVI A, 10H
+        OUT 16H
+        MVI A, 40H
+        OUT 17H
+
+        MVI A, 01H
+        OUT 18H
+        IN 22H
+        STA 2000H
+        HLT
+    `;
+
+    const program = assembler.assemble(source);
+    cpu.memory.set(program.binary);
+    while (!cpu.halted) cpu.step();
+
+    assert.strictEqual(fpu.operandA, 1.5);
+    assert.strictEqual(fpu.operandB, 2.25);
+    assert.strictEqual(fpu.result, 3.75);
+    assert.strictEqual(cpu.readMemory(0x2000), 0x70);
 });
 
 console.log('All tests completed successfully!');

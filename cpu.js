@@ -1,6 +1,7 @@
 class Intel8080 {
-    constructor() {
+    constructor(ioDevice = null) {
         this.memory = new Uint8Array(65536);
+        this.ioDevice = ioDevice;
         this.reset();
     }
 
@@ -24,6 +25,9 @@ class Intel8080 {
             cy: false
         };
         this.halted = false;
+        if (this.ioDevice && typeof this.ioDevice.reset === 'function') {
+            this.ioDevice.reset();
+        }
         if (this.memory) {
             this.memory.fill(0);
         }
@@ -266,8 +270,23 @@ class Intel8080 {
             case 0x3F: this.flags.cy = !this.flags.cy; break; // CMC
 
             // Special
-            case 0xDB: this.fetch(); break; // IN (Ignored for now)
-            case 0xD3: this.fetch(); break; // OUT (Ignored for now)
+            case 0xDB: { // IN port
+                const port = this.fetch();
+                if (this.ioDevice && this.ioDevice.handlesInputPort(port)) {
+                    const value = this.ioDevice.readPort(port);
+                    this.registers.a = value === null ? 0 : value;
+                } else {
+                    this.registers.a = 0;
+                }
+                break;
+            }
+            case 0xD3: { // OUT port
+                const port = this.fetch();
+                if (this.ioDevice && this.ioDevice.handlesOutputPort(port)) {
+                    this.ioDevice.writePort(port, this.registers.a);
+                }
+                break;
+            }
             case 0xFB: break; // EI
             case 0xF3: break; // DI
         }
