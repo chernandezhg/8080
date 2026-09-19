@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intel 8080 Emulator & Assembler</title>
+    <title>Intel 8080 + Coprocesador FPU</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
         <div class="header-container">
-            <h1>Intel 8080 Emulator & Assembler</h1>
-            <span class="version-badge">Version 2.1</span>
+            <h1>Intel 8080 Emulator &amp; Assembler</h1>
+            <span class="version-badge">Version 3.0 + FPU</span>
         </div>
     </header>
 
@@ -84,6 +84,75 @@ HLT"></textarea>
                     </div>
                 </div>
 
+                <div class="card fpu-card">
+                    <div class="fpu-heading">
+                        <div>
+                            <h3>Coprocesador de punto flotante</h3>
+                            <p>FPU conceptual de 32 bits IEEE 754 conectada mediante puertos IN/OUT.</p>
+                        </div>
+                        <span id="fpu-status-badge" class="fpu-status ready">READY</span>
+                    </div>
+
+                    <div class="fpu-registers">
+                        <div class="fpu-register">
+                            <span>F0 · Operando A</span>
+                            <strong id="fpu-a-value">0</strong>
+                            <code id="fpu-a-hex">0x00000000</code>
+                        </div>
+                        <div class="fpu-register">
+                            <span>F1 · Operando B</span>
+                            <strong id="fpu-b-value">0</strong>
+                            <code id="fpu-b-hex">0x00000000</code>
+                        </div>
+                        <div class="fpu-register result">
+                            <span>RESULT</span>
+                            <strong id="fpu-result-value">0</strong>
+                            <code id="fpu-result-hex">0x00000000</code>
+                        </div>
+                        <div class="fpu-register operation">
+                            <span>Operacion</span>
+                            <strong id="fpu-operation">Esperando</strong>
+                            <code id="fpu-status-hex">STATUS 0x01</code>
+                        </div>
+                    </div>
+
+                    <div class="fpu-workbench">
+                        <div class="fpu-manual">
+                            <h4>Prueba manual</h4>
+                            <div class="fpu-controls">
+                                <input id="fpu-input-a" type="number" step="any" value="1.5" aria-label="Operando A">
+                                <select id="fpu-operation-select" aria-label="Operacion">
+                                    <option value="1">+ Sumar</option>
+                                    <option value="2">− Restar</option>
+                                    <option value="3">× Multiplicar</option>
+                                    <option value="4">÷ Dividir</option>
+                                </select>
+                                <input id="fpu-input-b" type="number" step="any" value="2.25" aria-label="Operando B">
+                                <button id="btn-fpu-calculate">Calcular</button>
+                            </div>
+                            <button id="btn-load-fpu-demo" class="btn-secondary">Cargar demostracion IN/OUT</button>
+                        </div>
+
+                        <div class="fpu-protocol">
+                            <h4>Mapa de puertos</h4>
+                            <div class="port-list">
+                                <code>OUT 10H–13H → F0</code>
+                                <code>OUT 14H–17H → F1</code>
+                                <code>OUT 18H → comando</code>
+                                <code>IN 20H–23H ← resultado</code>
+                                <code>IN 24H ← estado</code>
+                            </div>
+                        </div>
+
+                        <div class="fpu-activity-panel">
+                            <h4>Actividad del bus</h4>
+                            <div id="fpu-activity" class="fpu-activity">
+                                <span class="activity-empty">Sin transferencias</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card memory">
                     <h3>Memory View</h3>
                     <div class="mem-controls">
@@ -96,6 +165,7 @@ HLT"></textarea>
         </section>
     </main>
 
+    <script src="fpu.js"></script>
     <script src="cpu.js"></script>
     <script src="assembler.js"></script>
     <script src="main.js"></script>

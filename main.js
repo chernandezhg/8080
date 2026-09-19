@@ -1,8 +1,47 @@
-const cpu = new Intel8080();
+const fpu = new FloatingPointCoprocessor();
+const cpu = new Intel8080(fpu);
 const assembler = new Assembler8080();
 
 let runInterval = null;
 let memoryStart = 0;
+
+const FPU_DEMO_PROGRAM = `; Demostracion del coprocesador Float32
+; F0 = 1.5 (IEEE 754: 3FC00000)
+MVI A, 00H
+OUT 10H
+OUT 11H
+MVI A, C0H
+OUT 12H
+MVI A, 3FH
+OUT 13H
+
+; F1 = 2.25 (IEEE 754: 40100000)
+MVI A, 00H
+OUT 14H
+OUT 15H
+MVI A, 10H
+OUT 16H
+MVI A, 40H
+OUT 17H
+
+; Comando 01H = SUMA
+MVI A, 01H
+OUT 18H
+
+; Leer resultado 3.75 (40700000) y guardarlo
+IN 20H
+STA 2000H
+IN 21H
+STA 2001H
+IN 22H
+STA 2002H
+IN 23H
+STA 2003H
+
+; Leer estado (01H = READY)
+IN 24H
+STA 2004H
+HLT`;
 
 function updateUI() {
     // Registers
@@ -29,6 +68,62 @@ function updateUI() {
 
     renderMemory();
     renderStack();
+    renderFPU();
+}
+
+function formatFloat(value) {
+    if (Number.isNaN(value)) return 'NaN';
+    if (value === Infinity) return '+Infinity';
+    if (value === -Infinity) return '-Infinity';
+    return Number(value).toLocaleString('es-GT', { maximumSignificantDigits: 9 });
+}
+
+function renderFPU() {
+    document.getElementById('fpu-a-value').textContent = formatFloat(fpu.operandA);
+    document.getElementById('fpu-b-value').textContent = formatFloat(fpu.operandB);
+    document.getElementById('fpu-result-value').textContent = formatFloat(fpu.result);
+    document.getElementById('fpu-a-hex').textContent = '0x' + fpu.bytesToHex(fpu.operandABytes);
+    document.getElementById('fpu-b-hex').textContent = '0x' + fpu.bytesToHex(fpu.operandBBytes);
+    document.getElementById('fpu-result-hex').textContent = '0x' + fpu.bytesToHex(fpu.resultBytes);
+    document.getElementById('fpu-operation').textContent = fpu.operationName;
+    document.getElementById('fpu-status-hex').textContent =
+        'STATUS 0x' + fpu.status.toString(16).toUpperCase().padStart(2, '0');
+
+    const statusLabels = fpu.getStatusLabels();
+    const statusBadge = document.getElementById('fpu-status-badge');
+    statusBadge.textContent = statusLabels.join(' · ');
+    statusBadge.className = 'fpu-status ' + (statusLabels.length > 1 ? 'warning' : 'ready');
+
+    const activity = document.getElementById('fpu-activity');
+    activity.innerHTML = '';
+    if (fpu.activity.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'activity-empty';
+        empty.textContent = 'Sin transferencias';
+        activity.appendChild(empty);
+        return;
+    }
+
+    fpu.activity.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'activity-row';
+
+        const direction = document.createElement('span');
+        direction.className = 'activity-direction ' + item.direction.toLowerCase();
+        direction.textContent = item.direction;
+
+        const port = document.createElement('code');
+        port.textContent = item.port.toString(16).toUpperCase().padStart(2, '0') + 'H';
+
+        const value = document.createElement('code');
+        value.textContent = item.value.toString(16).toUpperCase().padStart(2, '0') + 'H';
+
+        const detail = document.createElement('span');
+        detail.textContent = item.detail;
+
+        row.append(direction, port, value, detail);
+        activity.appendChild(row);
+    });
 }
 
 function renderStack() {
@@ -107,6 +202,7 @@ document.getElementById('btn-assemble').addEventListener('click', () => {
     const output = document.getElementById('assembler-output');
     try {
         const result = assembler.assemble(source);
+        cpu.reset();
         cpu.memory.set(result.binary);
         output.textContent = 'Assembly successful! Loaded into memory.';
         output.className = 'success';
@@ -185,6 +281,21 @@ document.getElementById('btn-mem-go').addEventListener('click', () => {
     const val = document.getElementById('mem-start-addr').value;
     memoryStart = parseInt(val, 16) || 0;
     renderMemory();
+});
+
+document.getElementById('btn-fpu-calculate').addEventListener('click', () => {
+    const a = Number(document.getElementById('fpu-input-a').value);
+    const b = Number(document.getElementById('fpu-input-b').value);
+    const command = Number(document.getElementById('fpu-operation-select').value);
+
+    fpu.setOperands(a, b);
+    fpu.execute(command);
+    updateUI();
+});
+
+document.getElementById('btn-load-fpu-demo').addEventListener('click', () => {
+    document.getElementById('code-editor').value = FPU_DEMO_PROGRAM;
+    document.getElementById('btn-assemble').click();
 });
 
 // Initial UI update
